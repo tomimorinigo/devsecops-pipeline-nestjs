@@ -1,0 +1,11 @@
+title = "TPI secret detection"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "tpi-jwt-secret"
+description = "Hardcoded JWT signing secret"
+regex = '''(?i)\bJWT_SECRET\s*=\s*["']([a-z0-9_+/=-]{32,})["']'''
+secretGroup = 1
+keywords = ["jwt_secret"]

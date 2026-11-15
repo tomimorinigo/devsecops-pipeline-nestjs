@@ -6,6 +6,7 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 
 FROM node:26-alpine
+RUN npm install --global npm@12.2.2
 ENV NODE_ENV=production
 WORKDIR /app
 
