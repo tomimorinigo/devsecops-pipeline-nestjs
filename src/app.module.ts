@@ -2,7 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { validateEnv } from './config/env.validation.js';
+import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
+import { NotesModule } from './notes/notes.module.js';
+import { ProductsModule } from './products/products.module.js';
+import { SeedModule } from './seed/seed.module.js';
 
 @Module({
   imports: [
@@ -22,6 +26,10 @@ import { HealthModule } from './health/health.module.js';
       }),
     }),
     HealthModule,
+    AuthModule,
+    NotesModule,
+    ProductsModule,
+    SeedModule,
   ],
 })
 export class AppModule {}

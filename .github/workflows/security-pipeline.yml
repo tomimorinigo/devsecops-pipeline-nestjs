@@ -49,8 +49,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Generate JWT_SECRET for this run
-        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - name: Generate secrets for this run
+        run: |
+          echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "SEED_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
 
       - run: npm ci
       - run: npm run lint
