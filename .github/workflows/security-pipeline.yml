@@ -170,7 +170,7 @@ jobs:
 
   dast:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Start application and database
@@ -181,20 +181,28 @@ jobs:
               "$(openssl rand -hex 16)" "$(openssl rand -hex 32)" "$(openssl rand -hex 16)"
           } > .env
           docker compose -p tpi-dast up --build --wait --wait-timeout 90
-      - name: Analyze HTTP responses with ZAP
+      - name: Scan application with ZAP
         run: |
           mkdir -p reports/dast
           chmod a+w reports/dast
           docker run --rm --network tpi-dast_default \
-            -v "$PWD/.zap/passive.yml:/zap/passive.yml:ro" \
+            -v "$PWD/.zap/automation.yml:/zap/automation.yml:ro" \
             -v "$PWD/reports/dast:/zap/wrk" ghcr.io/zaproxy/zaproxy:2.17.0 \
-            zap.sh -cmd -autorun /zap/passive.yml
+            zap.sh -cmd -autorun /zap/automation.yml
+      - name: Install sqlmap
+        if: ${{ !cancelled() }}
+        run: pipx install sqlmap==1.10.11
+      - name: Test product search with sqlmap
+        if: ${{ !cancelled() }}
+        run: ./scripts/run-sqlmap.sh http://localhost:3000 reports/sqlmap
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dast
-          path: reports/dast/zap-report.json
+          path: |
+            reports/dast/
+            reports/sqlmap/
       - name: Stop containers
         if: always()
         run: docker compose -p tpi-dast down --volumes
