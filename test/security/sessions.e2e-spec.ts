@@ -8,7 +8,7 @@ import {
   seedPassword,
 } from '../helpers/app.js';
 
-describe('VULN-16 sessions: secure cookie and real logout', () => {
+describe('VULN-10 sessions: secure cookie and real logout', () => {
   let app: NestExpressApplication;
 
   beforeAll(async () => {

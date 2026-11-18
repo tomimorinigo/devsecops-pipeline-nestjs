@@ -13,7 +13,7 @@
 
 Cada etapa de análisis publica su reporte cuando está disponible. El resumen de `gate` muestra el resultado de cada job. Para que el resultado bloquee el merge, el repositorio debe exigir el check `gate` en `main` (paso 6).
 
-ZAP reporta "Absence of Anti-CSRF Tokens" (10202) en el formulario de comentarios. Se baja a LOW con un `alertFilter` porque la cookie de sesión es `SameSite=Lax`, y el navegador no la envía en un POST cross-site. Es un riesgo aceptado hasta implementar tokens CSRF (VULN-13, Ampliación); en ese momento se quita el filtro.
+ZAP reporta "Absence of Anti-CSRF Tokens" (10202) en el formulario de comentarios. Se baja a LOW con un `alertFilter` porque la cookie de sesión es `SameSite=Lax`, y el navegador no la envía en un POST cross-site. Es un riesgo aceptado hasta implementar tokens CSRF (VULN-14, Ampliación); en ese momento se quita el filtro.
 
 sqlmap no devuelve un código de salida distinto de cero cuando encuentra una inyección. Por eso `scripts/run-sqlmap.sh` revisa el archivo `log` que genera sqlmap y falla si tiene contenido. Usa `--technique=BEU` (boolean, error y UNION) y deja afuera las técnicas basadas en tiempo, para que el job dure segundos.
 
