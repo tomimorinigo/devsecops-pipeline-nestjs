@@ -3,7 +3,7 @@ import type { CookieOptions, Request } from 'express';
 export const SESSION_COOKIE = 'session';
 export const SESSION_TTL_SECONDS = 15 * 60;
 
-// FIX-16: session cookie not readable from JS, only over HTTPS, not sent cross-site
+// FIX-10: session cookie not readable from JS, only over HTTPS, not sent cross-site
 export const SESSION_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   secure: true,

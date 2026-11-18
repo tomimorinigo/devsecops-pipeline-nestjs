@@ -43,7 +43,7 @@ export class AuthService {
     return { id: payload.sub, email: payload.email };
   }
 
-  // FIX-16: logout revokes the token server-side, not only by deleting the cookie
+  // FIX-10: logout revokes the token server-side, not only by deleting the cookie
   async logout(token: string | undefined): Promise<void> {
     if (!token) return;
     try {
