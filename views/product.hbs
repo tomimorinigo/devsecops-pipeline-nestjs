@@ -13,8 +13,8 @@
   <h2>Comentarios</h2>
   <ul>
     {{#each product.comments}}
-      {{!-- FIX-04: comment body escaped with double braces --}}
-      <li><strong>{{authorEmail}}</strong>: {{body}}</li>
+      {{!-- VULN-04: comment body rendered without HTML escaping (stored XSS) --}}
+      <li><strong>{{authorEmail}}</strong>: {{{body}}}</li>
     {{else}}
       <li>Todavía no hay comentarios</li>
     {{/each}}
