@@ -13,10 +13,9 @@ export class ProductsService {
   ) {}
 
   search(term: string): Promise<Product[]> {
-    // FIX-01: parameterized query, user input never becomes part of the SQL
+    // VULN-01: user input concatenated into the SQL string (SQL injection)
     return this.dataSource.query(
-      'SELECT id, name, description, price FROM products WHERE name ILIKE $1 ORDER BY id',
-      [`%${term}%`],
+      `SELECT id, name, description, price FROM products WHERE name ILIKE '%${term}%' ORDER BY id`,
     );
   }
 
