@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { JWT_SECRET } from '../config/jwt.js';
 import { UsersModule } from '../users/users.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
@@ -10,13 +10,9 @@ import { AuthService } from './auth.service.js';
 @Module({
   imports: [
     UsersModule,
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        // FIX-07: secret comes from the environment, never from the code
-        secret: config.getOrThrow<string>('JWT_SECRET'),
-        signOptions: { algorithm: 'HS256' },
-      }),
+    JwtModule.register({
+      secret: JWT_SECRET,
+      signOptions: { algorithm: 'HS256' },
     }),
   ],
   controllers: [AuthController],
