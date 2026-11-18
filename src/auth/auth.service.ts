@@ -37,13 +37,10 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException();
     }
-    if (this.revokedTokens.has(payload.jti)) {
-      throw new UnauthorizedException();
-    }
     return { id: payload.sub, email: payload.email };
   }
 
-  // FIX-10: logout revokes the token server-side, not only by deleting the cookie
+  // VULN-10: logout records the token as revoked, but verify() never checks it
   async logout(token: string | undefined): Promise<void> {
     if (!token) return;
     try {
