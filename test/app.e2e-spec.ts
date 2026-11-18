@@ -1,20 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { App } from 'supertest/types.js';
-import { AppModule } from './../src/app.module.js';
+import { createTestApp } from './helpers/app.js';
 
-// Requires a running Postgres (docker compose up -d db) and the .env variables.
 describe('Health (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    app = await createTestApp();
+  });
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+  afterAll(async () => {
+    await app.close();
   });
 
   it('GET /health responds ok with the database up', () => {
@@ -22,9 +18,5 @@ describe('Health (e2e)', () => {
       .get('/health')
       .expect(200)
       .expect({ status: 'ok', db: 'up' });
-  });
-
-  afterAll(async () => {
-    await app.close();
   });
 });
