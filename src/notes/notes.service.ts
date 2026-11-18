@@ -14,9 +14,9 @@ export class NotesService {
     return this.notes.find({ where: { ownerId }, order: { id: 'ASC' } });
   }
 
-  // FIX-02: the note is looked up by id AND owner; someone else's note is a 404 (not 403)
-  async findOneByOwner(id: number, ownerId: number) {
-    const note = await this.notes.findOneBy({ id, ownerId });
+  // VULN-02: the note is looked up only by id, the owner is never checked (IDOR)
+  async findOneByOwner(id: number, _ownerId: number) {
+    const note = await this.notes.findOneBy({ id });
     if (!note) {
       throw new NotFoundException();
     }
