@@ -1,13 +1,10 @@
 import { join } from 'node:path';
 import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
 export function configureApp(app: NestExpressApplication) {
-  const config = app.get(ConfigService);
-
   app.disable('x-powered-by');
 
   // VULN-05: Content-Security-Policy disabled
@@ -18,12 +15,8 @@ export function configureApp(app: NestExpressApplication) {
     }),
   );
 
-  // FIX-06: CORS only for origins in the allowlist
-  const allowedOrigins = config
-    .get<string>('CORS_ORIGINS', 'http://localhost:3000')
-    .split(',')
-    .map((origin) => origin.trim());
-  app.enableCors({ origin: allowedOrigins, credentials: true });
+  // VULN-06: CORS reflects any Origin and allows credentials
+  app.enableCors({ origin: true, credentials: true });
 
   app.use(cookieParser());
   app.useGlobalPipes(
