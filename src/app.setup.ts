@@ -10,22 +10,10 @@ export function configureApp(app: NestExpressApplication) {
 
   app.disable('x-powered-by');
 
-  // FIX-05: helmet with an explicit CSP
+  // VULN-05: Content-Security-Policy disabled
   app.use(
     helmet({
-      contentSecurityPolicy: {
-        useDefaults: false,
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'"],
-          imgSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          frameAncestors: ["'none'"],
-          baseUri: ["'self'"],
-          formAction: ["'self'"],
-        },
-      },
+      contentSecurityPolicy: false,
       referrerPolicy: { policy: 'no-referrer' },
     }),
   );
