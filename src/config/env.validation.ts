@@ -7,6 +7,7 @@ const REQUIRED_VARS = [
   'DB_PASSWORD',
   'DB_NAME',
   'JWT_SECRET',
+  'SEED_PASSWORD',
 ] as const;
 
 export function validateEnv(config: Record<string, unknown>) {

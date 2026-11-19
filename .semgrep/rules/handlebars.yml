@@ -1,0 +1,9 @@
+rules:
+  - id: xss-hbs-triple-stash
+    languages: [generic]
+    severity: ERROR
+    message: Use escaped Handlebars interpolation for rendered values.
+    paths:
+      include:
+        - '**/*.hbs'
+    pattern-regex: '\{\{\{[^{}]+\}\}\}'

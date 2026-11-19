@@ -16,9 +16,81 @@ concurrency:
 
 jobs:
   build-test:
-    name: Lint, build and tests
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test -- --passWithNoTests
 
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Scan checked-out Git history
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/repo" -w /repo \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 git --log-opts=HEAD --redact=100 \
+            --config .gitleaks.toml --report-format json --report-path reports/gitleaks.json .
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gitleaks
+          path: reports/gitleaks.json
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check custom rule fixtures
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src semgrep/semgrep:1.185.0 \
+            semgrep scan --metrics=off --test --config .semgrep/rules .semgrep/tests
+      - name: Scan application source
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.185.0 \
+            semgrep scan --metrics=off --error --severity ERROR \
+            --config .semgrep/rules --config p/owasp-top-ten \
+            --sarif-output reports/semgrep.sarif src views
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: semgrep
+          path: reports/semgrep.sarif
+
+  deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Audit production dependencies
+        run: |
+          mkdir -p reports
+          npm audit --omit=dev --audit-level=high --json > reports/npm-audit.json
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: npm-audit
+          path: reports/npm-audit.json
+
+  security-tests:
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:18-alpine
@@ -43,17 +115,107 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
-
-      - name: Generate JWT_SECRET for this run
-        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
-
+      - name: Generate secrets for this run
+        run: |
+          jwt_secret=$(openssl rand -hex 32)
+          seed_password=$(openssl rand -hex 12)
+          printf '::add-mask::%s\n' "$jwt_secret" "$seed_password"
+          printf 'JWT_SECRET=%s\nSEED_PASSWORD=%s\n' "$jwt_secret" "$seed_password" >> "$GITHUB_ENV"
       - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test -- --passWithNoTests
-      - run: npm run test:e2e
+      - name: Run security tests with JUnit report
+        run: |
+          mkdir -p reports
+          npm run test:security -- --reporter=default --reporter=junit --outputFile.junit=reports/security-tests.xml
+      - run: npm run test:e2e -- test/app.e2e-spec.ts
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: security-tests
+          path: reports/security-tests.xml
+
+  image-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scan Dockerfile
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/aquasecurity/trivy:0.76.2 \
+            config --severity HIGH,CRITICAL --exit-code 1 --format json \
+            --output reports/trivy-config.json Dockerfile
+      - name: Build application image
+        if: ${{ !cancelled() }}
+        id: build
+        run: docker build --tag tpi-app:ci .
+      - name: Scan application image
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          mkdir -p reports
+          docker save --output "$RUNNER_TEMP/tpi-app.tar" tpi-app:ci
+          docker run --rm -v "$RUNNER_TEMP/tpi-app.tar:/image.tar:ro" -v "$PWD/reports:/reports" \
+            ghcr.io/aquasecurity/trivy:0.76.2 image --input /image.tar --scanners vuln \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --format json \
+            --output /reports/trivy-image.json
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trivy
+          path: reports/trivy-*.json
+
+  dast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Start application and database
+        run: |
+          {
+            grep -vE '^(DB_PASSWORD|JWT_SECRET|SEED_PASSWORD)=' .env.example
+            printf 'DB_PASSWORD=%s\nJWT_SECRET=%s\nSEED_PASSWORD=%s\n' \
+              "$(openssl rand -hex 16)" "$(openssl rand -hex 32)" "$(openssl rand -hex 16)"
+          } > .env
+          docker compose -p tpi-dast up --build --wait --wait-timeout 90
+      - name: Scan application with ZAP
+        run: |
+          mkdir -p reports/dast
+          chmod a+w reports/dast
+          docker run --rm --network tpi-dast_default \
+            -v "$PWD/.zap/automation.yml:/zap/automation.yml:ro" \
+            -v "$PWD/reports/dast:/zap/wrk" ghcr.io/zaproxy/zaproxy:2.17.0 \
+            zap.sh -cmd -autorun /zap/automation.yml
+      - name: Install sqlmap
+        if: ${{ !cancelled() }}
+        run: pipx install sqlmap==1.10.11
+      - name: Test product search with sqlmap
+        if: ${{ !cancelled() }}
+        run: ./scripts/run-sqlmap.sh http://localhost:3000 reports/sqlmap
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dast
+          path: |
+            reports/dast/
+            reports/sqlmap/
+      - name: Stop containers
+        if: always()
+        run: docker compose -p tpi-dast down --volumes
+
+  gate:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [build-test, secrets, sast, deps, security-tests, image-scan, dast]
+    env:
+      JOB_RESULTS: ${{ toJSON(needs) }}
+    steps:
+      - name: Require all checks to pass
+        run: |
+          jq -r '"| Job | Result |", "| --- | --- |", (to_entries[] | ["|", .key, "|", .value.result, "|"] | join(" "))' \
+            <<< "$JOB_RESULTS" >> "$GITHUB_STEP_SUMMARY"
+          jq -e 'all(.[]; .result == "success")' <<< "$JOB_RESULTS" > /dev/null

@@ -1,0 +1,37 @@
+rules:
+  - id: sqli-concat
+    languages: [typescript]
+    severity: ERROR
+    message: Pass SQL parameters separately from the query string.
+    pattern-either:
+      - pattern: $DB.query($LEFT + $RIGHT, ...)
+      - pattern: $DB.query(`...${$VALUE}...`, ...)
+
+  - id: helmet-csp-disabled
+    languages: [typescript]
+    severity: ERROR
+    message: Keep Helmet content security policy enabled.
+    pattern: |
+      helmet({..., contentSecurityPolicy: false, ...})
+
+  - id: cors-permissive
+    languages: [typescript]
+    severity: ERROR
+    message: Use an explicit CORS allowlist with credentialed requests.
+    pattern-either:
+      - pattern: |
+          $APP.enableCors({..., credentials: true, origin: true, ...})
+      - pattern: |
+          $APP.enableCors({..., credentials: true, origin: '*', ...})
+
+  - id: cookie-insecure
+    languages: [typescript]
+    severity: ERROR
+    message: Keep secure session cookie attributes enabled.
+    pattern-either:
+      - pattern: |
+          const SESSION_COOKIE_OPTIONS: $TYPE = {..., httpOnly: false, ...};
+      - pattern: |
+          const SESSION_COOKIE_OPTIONS: $TYPE = {..., secure: false, ...};
+      - pattern: |
+          const SESSION_COOKIE_OPTIONS: $TYPE = {..., sameSite: 'none', ...};

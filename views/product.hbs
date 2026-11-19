@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{{title}}</title>
+</head>
+<body>
+  <p><a href="/">Inicio</a></p>
+  <h1>{{product.name}}</h1>
+  <p>{{product.description}}</p>
+  <p>Precio: ${{product.price}}</p>
+
+  <h2>Comentarios</h2>
+  <ul>
+    {{#each product.comments}}
+      {{!-- FIX-04: comment body escaped with double braces --}}
+      <li><strong>{{authorEmail}}</strong>: {{body}}</li>
+    {{else}}
+      <li>Todavía no hay comentarios</li>
+    {{/each}}
+  </ul>
+
+  <form action="/products/{{product.id}}/comments" method="post">
+    <textarea name="body" maxlength="500" required></textarea>
+    <button type="submit">Comentar</button>
+  </form>
+</body>
+</html>

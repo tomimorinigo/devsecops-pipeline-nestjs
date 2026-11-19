@@ -1,0 +1,83 @@
+env:
+  contexts:
+    - name: tpi
+      urls:
+        - http://app:3000
+      includePaths:
+        - http://app:3000.*
+  parameters:
+    failOnError: true
+    progressToStdout: true
+
+jobs:
+  - type: alertFilter
+    alertFilters:
+      - ruleId: 10202
+        newRisk: Low
+        context: tpi
+
+  - type: passiveScan-config
+    parameters:
+      scanOnlyInScope: true
+
+  - type: requestor
+    requests:
+      - url: http://app:3000/
+        responseCode: 200
+      - url: http://app:3000/health
+        responseCode: 200
+      - url: http://app:3000/search?q=mouse
+        responseCode: 200
+      - url: http://app:3000/products/search?q=mouse
+        responseCode: 200
+      - url: http://app:3000/products/1
+        responseCode: 200
+
+  - type: spider
+    parameters:
+      context: tpi
+      maxDuration: 1
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 2
+
+  - type: activeScan
+    parameters:
+      context: tpi
+      maxRuleDurationInMins: 2
+      maxScanDurationInMins: 6
+    policyDefinition:
+      defaultStrength: medium
+      defaultThreshold: 'off'
+      rules:
+        - id: 40012
+          name: Cross Site Scripting (Reflected)
+          threshold: medium
+        - id: 40014
+          name: Cross Site Scripting (Persistent)
+          threshold: medium
+        - id: 40018
+          name: SQL Injection
+          threshold: medium
+        - id: 40022
+          name: SQL Injection - PostgreSQL (Time Based)
+          threshold: medium
+
+  - type: report
+    alwaysRun: true
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk
+      reportFile: zap-report
+
+  - type: report
+    alwaysRun: true
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk
+      reportFile: zap-report
+
+  - type: exitStatus
+    parameters:
+      errorLevel: Medium

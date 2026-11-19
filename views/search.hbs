@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{{title}}</title>
+</head>
+<body>
+  <p><a href="/">Inicio</a></p>
+  <form action="/search" method="get">
+    <input type="text" name="q" value="{{q}}">
+    <button type="submit">Buscar</button>
+  </form>
+  {{!-- FIX-03: {{q}} with double braces, Handlebars escapes the HTML --}}
+  <h2>Resultados para: {{q}}</h2>
+  <ul>
+    {{#each results}}
+      <li><a href="/products/{{id}}">{{name}}</a> — ${{price}}</li>
+    {{else}}
+      <li>Sin resultados</li>
+    {{/each}}
+  </ul>
+</body>
+</html>
